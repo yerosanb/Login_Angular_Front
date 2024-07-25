@@ -1,0 +1,267 @@
+(select current_upload_date from files where upload_date = '2023-05-09' and type = 'CORE')
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+//select ending balance of a given day
+select ending_balance_ats FROM files where upload_date = '2023-05-09' and type = 'ATS'
+
+// display list of debit outstanding transactions of a given day: debit entries in book
+select distinct dac.id, dac.amount, dac.branch_code, dac.additional_information from data_awb_core dac where upload_date <= 20230409 and dr_cr = 'DR' union
+/*RTGS*/
+select distinct rac.id, rac.amount, rac.branch_code, rac.additional_information from rtgs_awb_core rac, rtgs_matched rm, rtgs_nbe_ats rna
+where rac.dr_cr = 'DR' and rac.upload_date <= 20230509 and ((rna.id = rm.rtgs_nbe_ats_id and rac.match_id = rm.match_id and rna.upload_date > 20230509)) union
+select distinct rac.id, rac.amount, rac.branch_code, rac.additional_information from rtgs_awb_core rac, rtgs_matched rm where 
+rac.dr_cr = 'DR' and rac.upload_date <= 20230509 and ((20230509 = rac.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rac.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rac.file_id)) and (rm.match_date > 20230518)))) union
+/*ERCA*/
+select distinct eac.id, eac.amount, eac.branch_code, eac.additional_information from erca_awb_core eac, erca_matched em, erca_nbe_ats ena
+where eac.dr_cr = 'DR' and eac.upload_date <= 20230509 and ((ena.id = em.erca_nbe_ats_id and eac.match_id = em.match_id and ena.upload_date > 20230509)) union
+select distinct eac.id, eac.amount, eac.branch_code, eac.additional_information from erca_awb_core eac, erca_matched em where 
+eac.dr_cr = 'DR' and eac.upload_date <= 20230509 and ((20230509 = eac.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > eac.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = eac.file_id)) and (em.match_date > 20230518)))) union
+/*SOS*/
+select distinct sac.id, sac.amount, sac.branch_code, sac.additional_information from sos_awb_core sac, sos_matched sm, sos_nbe_ats sna
+where sac.dr_cr = 'DR' and sac.upload_date <= 20230509 and ((sna.id = sm.sos_nbe_ats_id and sac.match_id = sm.match_id and sna.upload_date > 20230509)) union
+select distinct sac.id, sac.amount, sac.branch_code, sac.additional_information from sos_awb_core sac, sos_matched sm where 
+sac.dr_cr = 'DR' and sac.upload_date <= 20230509 and ((20230509 = sac.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sac.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sac.file_id)) and (sm.match_date > 20230518)))) union
+/*B2B*/
+select distinct bac.id, bac.amount, bac.branch_code, bac.additional_information from b2b_awb_core bac, b2b_matched bm, b2b_nbe_ats bna
+where bac.dr_cr = 'DR' and bac.upload_date <= 20230509 and ((bna.id = bm.b2b_nbe_ats_id and bac.match_id = bm.match_id and bna.upload_date > 20230509)) union
+select distinct bac.id, bac.amount, bac.branch_code, bac.additional_information from b2b_awb_core bac, b2b_matched bm where 
+bac.dr_cr = 'DR' and bac.upload_date <= 20230509 and ((20230509 = bac.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bac.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bac.file_id)) and (bm.match_date > 20230518)))) 
+
+// display total amount of debit outstanding transactions of a given day: total debit in book
+select ((select ISNULL(sum(dac.amount), 0) from data_awb_core dac where upload_date <= 20230409 and dr_cr = 'DR') 
++ (
+/*RTGS*/
+select (select ISNULL(sum(rac.amount), 0) from rtgs_awb_core rac, rtgs_matched rm, rtgs_nbe_ats rna where rac.dr_cr = 'DR' and rac.upload_date <= 20230509 
+and ((rna.id = rm.rtgs_nbe_ats_id and rac.match_id = rm.match_id and rna.upload_date > 20230509))) +
+(select ISNULL(sum(rac.amount), 0) from rtgs_awb_core rac, rtgs_matched rm where rac.dr_cr = 'DR' and 
+rac.upload_date <= 20230509 and ((20230509 = rac.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and  (20230509 > rac.upload_date and 
+((rm.match_date > (select f.current_upload_date from files f where f.id = rac.file_id)) and (rm.match_date > 20230518)))))
+)
++ (
+/*ERCA*/
+select (select ISNULL(sum(eac.amount), 0) from erca_awb_core eac, erca_matched em, erca_nbe_ats ena
+where eac.dr_cr = 'DR' and eac.upload_date <= 20230509 and ((ena.id = em.erca_nbe_ats_id and eac.match_id = em.match_id and ena.upload_date > 20230509))) +
+(select ISNULL(sum(eac.amount), 0) from erca_awb_core eac, erca_matched em where 
+eac.dr_cr = 'DR' and eac.upload_date <= 20230509 and ((20230509 = eac.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > eac.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = eac.file_id)) and (em.match_date > 20230518)))))
+)
++ (
+/*SOS*/
+select (select ISNULL(sum(sac.amount), 0) from sos_awb_core sac, sos_matched sm, sos_nbe_ats sna
+where sac.dr_cr = 'DR' and sac.upload_date <= 20230509 and ((sna.id = sm.sos_nbe_ats_id and sac.match_id = sm.match_id and sna.upload_date > 20230509))) +
+(select ISNULL(sum(sac.amount), 0) from sos_awb_core sac, sos_matched sm where 
+sac.dr_cr = 'DR' and sac.upload_date <= 20230509 and ((20230509 = sac.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sac.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sac.file_id)) and (sm.match_date > 20230518)))))
+)
+/*B2B*/
++ (
+select (select ISNULL(sum(bac.amount), 0) from b2b_awb_core bac, b2b_matched bm, b2b_nbe_ats bna
+where bac.dr_cr = 'DR' and bac.upload_date <= 20230509 and ((bna.id = bm.b2b_nbe_ats_id and bac.match_id = bm.match_id and bna.upload_date > 20230509))) +
+(select ISNULL(sum(bac.amount), 0) from b2b_awb_core bac, b2b_matched bm where 
+bac.dr_cr = 'DR' and bac.upload_date <= 20230509 and ((20230509 = bac.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bac.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bac.file_id)) and (bm.match_date > 20230518)))))
+))
+ ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+// display list of debit outstanding transactions of a given day: credit entries in book
+select distinct dac.id, dac.amount, dac.branch_code, dac.additional_information from data_awb_core dac where upload_date <= 20230409 and dr_cr = 'CR' union
+/*RTGS*/
+select distinct rac.id, rac.amount, rac.branch_code, rac.additional_information from rtgs_awb_core rac, rtgs_matched rm, rtgs_nbe_ats rna
+where rac.dr_cr = 'CR' and rac.upload_date <= 20230509 and ((rna.id = rm.rtgs_nbe_ats_id and rac.match_id = rm.match_id and rna.upload_date > 20230509)) union
+select distinct rac.id, rac.amount, rac.branch_code, rac.additional_information from rtgs_awb_core rac, rtgs_matched rm where 
+rac.dr_cr = 'CR' and rac.upload_date <= 20230509 and ((20230509 = rac.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rac.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rac.file_id)) and (rm.match_date > 20230518)))) union
+/*ERCA*/
+select distinct eac.id, eac.amount, eac.branch_code, eac.additional_information from erca_awb_core eac, erca_matched em, erca_nbe_ats ena
+where eac.dr_cr = 'CR' and eac.upload_date <= 20230509 and ((ena.id = em.erca_nbe_ats_id and eac.match_id = em.match_id and ena.upload_date > 20230509)) union
+select distinct eac.id, eac.amount, eac.branch_code, eac.additional_information from erca_awb_core eac, erca_matched em where 
+eac.dr_cr = 'CR' and eac.upload_date <= 20230509 and ((20230509 = eac.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > eac.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = eac.file_id)) and (em.match_date > 20230518)))) union
+/*SOS*/
+select distinct sac.id, sac.amount, sac.branch_code, sac.additional_information from sos_awb_core sac, sos_matched sm, sos_nbe_ats sna
+where sac.dr_cr = 'CR' and sac.upload_date <= 20230509 and ((sna.id = sm.sos_nbe_ats_id and sac.match_id = sm.match_id and sna.upload_date > 20230509)) union
+select distinct sac.id, sac.amount, sac.branch_code, sac.additional_information from sos_awb_core sac, sos_matched sm where 
+sac.dr_cr = 'CR' and sac.upload_date <= 20230509 and ((20230509 = sac.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sac.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sac.file_id)) and (sm.match_date > 20230518)))) union
+/*B2B*/
+select distinct bac.id, bac.amount, bac.branch_code, bac.additional_information from b2b_awb_core bac, b2b_matched bm, b2b_nbe_ats bna
+where bac.dr_cr = 'CR' and bac.upload_date <= 20230509 and ((bna.id = bm.b2b_nbe_ats_id and bac.match_id = bm.match_id and bna.upload_date > 20230509)) union
+select distinct bac.id, bac.amount, bac.branch_code, bac.additional_information from b2b_awb_core bac, b2b_matched bm where 
+bac.dr_cr = 'CR' and bac.upload_date <= 20230509 and ((20230509 = bac.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bac.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bac.file_id)) and (bm.match_date > 20230518)))) 
+
+// display total amount of debit outstanding transactions of a given day: total debit in book
+select ((select ISNULL(sum(dac.amount), 0) from data_awb_core dac where upload_date <= 20230409 and dr_cr = 'CR') 
++ (
+/*RTGS*/
+select (select ISNULL(sum(rac.amount), 0) from rtgs_awb_core rac, rtgs_matched rm, rtgs_nbe_ats rna where rac.dr_cr = 'CR' and rac.upload_date <= 20230509 
+and ((rna.id = rm.rtgs_nbe_ats_id and rac.match_id = rm.match_id and rna.upload_date > 20230509))) +
+(select ISNULL(sum(rac.amount), 0) from rtgs_awb_core rac, rtgs_matched rm where rac.dr_cr = 'CR' and 
+rac.upload_date <= 20230509 and ((20230509 = rac.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and  (20230509 > rac.upload_date and 
+((rm.match_date > (select f.current_upload_date from files f where f.id = rac.file_id)) and (rm.match_date > 20230518)))))
+)
++ (
+/*ERCA*/
+select (select ISNULL(sum(eac.amount), 0) from erca_awb_core eac, erca_matched em, erca_nbe_ats ena
+where eac.dr_cr = 'CR' and eac.upload_date <= 20230509 and ((ena.id = em.erca_nbe_ats_id and eac.match_id = em.match_id and ena.upload_date > 20230509))) +
+(select ISNULL(sum(eac.amount), 0) from erca_awb_core eac, erca_matched em where 
+eac.dr_cr = 'CR' and eac.upload_date <= 20230509 and ((20230509 = eac.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > eac.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = eac.file_id)) and (em.match_date > 20230518)))))
+)
++ (
+/*SOS*/
+select (select ISNULL(sum(sac.amount), 0) from sos_awb_core sac, sos_matched sm, sos_nbe_ats sna
+where sac.dr_cr = 'CR' and sac.upload_date <= 20230509 and ((sna.id = sm.sos_nbe_ats_id and sac.match_id = sm.match_id and sna.upload_date > 20230509))) +
+(select ISNULL(sum(sac.amount), 0) from sos_awb_core sac, sos_matched sm where 
+sac.dr_cr = 'CR' and sac.upload_date <= 20230509 and ((20230509 = sac.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sac.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sac.file_id)) and (sm.match_date > 20230518)))))
+)
+/*B2B*/
++ (
+select (select ISNULL(sum(bac.amount), 0) from b2b_awb_core bac, b2b_matched bm, b2b_nbe_ats bna
+where bac.dr_cr = 'CR' and bac.upload_date <= 20230509 and ((bna.id = bm.b2b_nbe_ats_id and bac.match_id = bm.match_id and bna.upload_date > 20230509))) +
+(select ISNULL(sum(bac.amount), 0) from b2b_awb_core bac, b2b_matched bm where 
+bac.dr_cr = 'CR' and bac.upload_date <= 20230509 and ((20230509 = bac.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bac.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bac.file_id)) and (bm.match_date > 20230518)))))
+))
+
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+
+//Balance as per CONVENTIONAL (Book) Statement
+select ISNULL(sum(ending_balance_con), 0) from files where upload_date = '2023-05-01' and type = 'CORE'
+//Balance as pepr IFB Statement
+select ISNULL(sum(ending_balance_ifb), 0) from files where upload_date = '2023-04-01' and type = 'CORE'
+//Balance as per Book Statement
+select ((select ISNULL(sum(ending_balance_con), 0) from files where upload_date = '2023-04-01' and type = 'CORE')
++ (select ISNULL(sum(ending_balance_ifb), 0) from files where upload_date = '2023-04-01' and type = 'CORE'))
+
+// display list of credit outstanding transactions of a given day: credit entries in NBE
+select distinct dna.id, dna.amount, dna.additional_information from data_nbe_ats dna where upload_date <= 20230401 and dr_cr = 'CR' union
+/*RTGS*/
+select distinct rna.id, rna.amount, rna.additional_information from rtgs_nbe_ats rna, rtgs_matched rm, rtgs_awb_core rac
+where rna.dr_cr = 'CR' and rna.upload_date <= 20230509 and rna.id = rm.rtgs_nbe_ats_id and rm.match_id = rac.match_id and rac.upload_date > 20230509 union
+select distinct rna.id, rna.amount, rna.additional_information from rtgs_matched rm, rtgs_nbe_ats rna where 
+rna.dr_cr = 'CR' and rna.upload_date <= 20230509 and ((20230509 = rna.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rna.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rna.file_id)) and (rm.match_date > 20230518)))) union
+/*ERCA*/
+select distinct ena.id, ena.amount, ena.additional_information from erca_nbe_ats ena, erca_matched em, erca_awb_core eac
+where ena.dr_cr = 'CR' and ena.upload_date <= 20230509 and ena.id = em.erca_nbe_ats_id and em.match_id = eac.match_id and eac.upload_date > 20230509 union
+select distinct ena.id, ena.amount, ena.additional_information from erca_matched em, erca_nbe_ats ena where 
+ena.dr_cr = 'CR' and ena.upload_date <= 20230509 and ((20230509 = ena.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > ena.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = ena.file_id)) and (em.match_date > 20230518)))) union
+/*SOS*/
+select distinct sna.id, sna.amount, sna.additional_information from sos_nbe_ats sna, sos_matched sm, sos_awb_core sac
+where sna.dr_cr = 'CR' and sna.upload_date <= 20230509 and sna.id = sm.sos_nbe_ats_id and sm.match_id = sac.match_id and sac.upload_date > 20230509 union
+select distinct sna.id, sna.amount, sna.additional_information from sos_matched sm, sos_nbe_ats sna where 
+sna.dr_cr = 'CR' and sna.upload_date <= 20230509 and ((20230509 = sna.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sna.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sna.file_id)) and (sm.match_date > 20230518)))) union
+/*B2B*/
+select distinct bna.id, bna.amount, bna.additional_information from b2b_nbe_ats bna, b2b_matched bm, b2b_awb_core bac
+where bna.dr_cr = 'CR' and bna.upload_date <= 20230509 and bna.id = bm.b2b_nbe_ats_id and bm.match_id = bac.match_id and bac.upload_date > 20230509 union
+select distinct bna.id, bna.amount, bna.additional_information from b2b_matched bm, b2b_nbe_ats bna where 
+bna.dr_cr = 'CR' and bna.upload_date <= 20230509 and ((20230509 = bna.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bna.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bna.file_id)) and (bm.match_date > 20230518))))  
+
+// display total amount of debit outstanding transactions of a given day: total debit in book
+select ((select ISNULL(sum(dna.amount), 0) from data_nbe_ats dna where upload_date <= 20230401 and dr_cr = 'CR') 
++ (
+/*RTGS*/
+select (select ISNULL(sum(rna.amount), 0) from rtgs_nbe_ats rna, rtgs_matched rm, rtgs_awb_core rac
+where rna.dr_cr = 'CR' and rna.upload_date <= 20230509 and rna.id = rm.rtgs_nbe_ats_id and rm.match_id = rac.match_id and rac.upload_date > 20230509) +
+(select ISNULL(sum(rna.amount), 0) from rtgs_matched rm, rtgs_nbe_ats rna where 
+rna.dr_cr = 'CR' and rna.upload_date <= 20230509 and ((20230509 = rna.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rna.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rna.file_id)) and (rm.match_date > 20230518)))))
+)
++ (
+/*ERCA*/
+select (select ISNULL(sum(ena.amount), 0) from erca_nbe_ats ena, erca_matched em, erca_awb_core eac
+where ena.dr_cr = 'CR' and ena.upload_date <= 20230509 and ena.id = em.erca_nbe_ats_id and em.match_id = eac.match_id and eac.upload_date > 20230509) +
+(select ISNULL(sum(ena.amount), 0) from erca_matched em, erca_nbe_ats ena where 
+ena.dr_cr = 'CR' and ena.upload_date <= 20230509 and ((20230509 = ena.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > ena.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = ena.file_id)) and (em.match_date > 20230518)))))
+)
++ (
+/*SOS*/
+select (select ISNULL(sum(sna.amount), 0) from sos_nbe_ats sna, sos_matched sm, sos_awb_core sac
+where sna.dr_cr = 'CR' and sna.upload_date <= 20230509 and sna.id = sm.sos_nbe_ats_id and sm.match_id = sac.match_id and sac.upload_date > 20230509) +
+(select ISNULL(sum(sna.amount), 0) from sos_matched sm, sos_nbe_ats sna where 
+sna.dr_cr = 'CR' and sna.upload_date <= 20230509 and ((20230509 = sna.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sna.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sna.file_id)) and (sm.match_date > 20230518)))))
+)
+/*B2B*/
++ (
+select (select ISNULL(sum(bna.amount), 0) from b2b_nbe_ats bna, b2b_matched bm, b2b_awb_core bac
+where bna.dr_cr = 'CR' and bna.upload_date <= 20230509 and bna.id = bm.b2b_nbe_ats_id and bm.match_id = bac.match_id and bac.upload_date > 20230509) +
+(select ISNULL(sum(bna.amount), 0) from b2b_matched bm, b2b_nbe_ats bna where 
+bna.dr_cr = 'CR' and bna.upload_date <= 20230509 and ((20230509 = bna.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bna.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bna.file_id)) and (bm.match_date > 20230518)))))
+))
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// display list of debit outstanding transactions of a given day: debit entries in NBE
+select distinct dna.id, dna.amount, dna.additional_information from data_nbe_ats dna where upload_date <= 20230401 and dr_cr = 'DR' union
+/*RTGS*/
+select distinct rna.id, rna.amount, rna.additional_information from rtgs_nbe_ats rna, rtgs_matched rm, rtgs_awb_core rac
+where rna.dr_cr = 'DR' and rna.upload_date <= 20230509 and rna.id = rm.rtgs_nbe_ats_id and rm.match_id = rac.match_id and rac.upload_date > 20230509 union
+select distinct rna.id, rna.amount, rna.additional_information from rtgs_matched rm, rtgs_nbe_ats rna where 
+rna.dr_cr = 'DR' and rna.upload_date <= 20230509 and ((20230509 = rna.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rna.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rna.file_id)) and (rm.match_date > 20230518)))) union
+/*ERCA*/
+select distinct ena.id, ena.amount, ena.additional_information from erca_nbe_ats ena, erca_matched em, erca_awb_core eac
+where ena.dr_cr = 'DR' and ena.upload_date <= 20230509 and ena.id = em.erca_nbe_ats_id and em.match_id = eac.match_id and eac.upload_date > 20230509 union
+select distinct ena.id, ena.amount, ena.additional_information from erca_matched em, erca_nbe_ats ena where 
+ena.dr_cr = 'DR' and ena.upload_date <= 20230509 and ((20230509 = ena.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > ena.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = ena.file_id)) and (em.match_date > 20230518)))) union
+/*SOS*/
+select distinct sna.id, sna.amount, sna.additional_information from sos_nbe_ats sna, sos_matched sm, sos_awb_core sac
+where sna.dr_cr = 'DR' and sna.upload_date <= 20230509 and sna.id = sm.sos_nbe_ats_id and sm.match_id = sac.match_id and sac.upload_date > 20230509 union
+select distinct sna.id, sna.amount, sna.additional_information from sos_matched sm, sos_nbe_ats sna where 
+sna.dr_cr = 'DR' and sna.upload_date <= 20230509 and ((20230509 = sna.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sna.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sna.file_id)) and (sm.match_date > 20230518)))) union
+/*B2B*/
+select distinct bna.id, bna.amount, bna.additional_information from b2b_nbe_ats bna, b2b_matched bm, b2b_awb_core bac
+where bna.dr_cr = 'DR' and bna.upload_date <= 20230509 and bna.id = bm.b2b_nbe_ats_id and bm.match_id = bac.match_id and bac.upload_date > 20230509 union
+select distinct bna.id, bna.amount, bna.additional_information from b2b_matched bm, b2b_nbe_ats bna where 
+bna.dr_cr = 'DR' and bna.upload_date <= 20230509 and ((20230509 = bna.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bna.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bna.file_id)) and (bm.match_date > 20230518))))  
+
+
+// display total amount of debit outstanding transactions of a given day: total debit in NBE
+select ((select ISNULL(sum(dna.amount), 0) from data_nbe_ats dna where upload_date <= 20230401 and dr_cr = 'DR') 
++ (
+/*RTGS*/
+select (select ISNULL(sum(rna.amount), 0) from rtgs_nbe_ats rna, rtgs_matched rm, rtgs_awb_core rac
+where rna.dr_cr = 'DR' and rna.upload_date <= 20230509 and rna.id = rm.rtgs_nbe_ats_id and rm.match_id = rac.match_id and rac.upload_date > 20230509) +
+(select ISNULL(sum(rna.amount), 0) from rtgs_matched rm, rtgs_nbe_ats rna where 
+rna.dr_cr = 'DR' and rna.upload_date <= 20230509 and ((20230509 = rna.upload_date and rm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > rna.upload_date and ((rm.match_date > (select f.current_upload_date from files f where f.id = rna.file_id)) and (rm.match_date > 20230518)))))
+)
++ (
+/*ERCA*/
+select (select ISNULL(sum(ena.amount), 0) from erca_nbe_ats ena, erca_matched em, erca_awb_core eac
+where ena.dr_cr = 'DR' and ena.upload_date <= 20230509 and ena.id = em.erca_nbe_ats_id and em.match_id = eac.match_id and eac.upload_date > 20230509) +
+(select ISNULL(sum(ena.amount), 0) from erca_matched em, erca_nbe_ats ena where 
+ena.dr_cr = 'DR' and ena.upload_date <= 20230509 and ((20230509 = ena.upload_date and em.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > ena.upload_date and ((em.match_date > (select f.current_upload_date from files f where f.id = ena.file_id)) and (em.match_date > 20230518)))))
+)
++ (
+/*SOS*/
+select (select ISNULL(sum(sna.amount), 0) from sos_nbe_ats sna, sos_matched sm, sos_awb_core sac
+where sna.dr_cr = 'DR' and sna.upload_date <= 20230509 and sna.id = sm.sos_nbe_ats_id and sm.match_id = sac.match_id and sac.upload_date > 20230509) +
+(select ISNULL(sum(sna.amount), 0) from sos_matched sm, sos_nbe_ats sna where 
+sna.dr_cr = 'DR' and sna.upload_date <= 20230509 and ((20230509 = sna.upload_date and sm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > sna.upload_date and ((sm.match_date > (select f.current_upload_date from files f where f.id = sna.file_id)) and (sm.match_date > 20230518)))))
+)
+/*B2B*/
++ (
+select (select ISNULL(sum(bna.amount), 0) from b2b_nbe_ats bna, b2b_matched bm, b2b_awb_core bac
+where bna.dr_cr = 'DR' and bna.upload_date <= 20230509 and bna.id = bm.b2b_nbe_ats_id and bm.match_id = bac.match_id and bac.upload_date > 20230509) +
+(select ISNULL(sum(bna.amount), 0) from b2b_matched bm, b2b_nbe_ats bna where 
+bna.dr_cr = 'DR' and bna.upload_date <= 20230509 and ((20230509 = bna.upload_date and bm.match_date > 20230518) and rac.match_id = rm.match_id or rac.match_id = rm.match_id and 
+(20230509 > bna.upload_date and ((bm.match_date > (select f.current_upload_date from files f where f.id = bna.file_id)) and (bm.match_date > 20230518)))))
+))
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||

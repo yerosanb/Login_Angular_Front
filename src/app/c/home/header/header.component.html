@@ -1,0 +1,18 @@
+<div class="navbar-custom topnav-navbar" id="navbar-custom-id_">
+    <div class="container-fluid">
+
+        <a href="javascript: void(0);" class="topnav-logo"
+
+        *ngIf=" 
+          this.localStorageService.retrieve('theme').trim() == 'dark'.trim() && (authService.isUser() || authService.isIssueAccount() || authService.isFixedAsset())"
+   >
+        <img src="/rms/assets/template_assets/images/awash_assets/awash_logo_003.svg" alt="Awash bank logo" height="45"
+          class="" style="background: #f1f1f1d9; padding: 2px" />
+        <!-- <span class="leftbar-user-name" style="margin-left: 0px">Awash Bank Reconciliation System</span> -->
+      </a>
+
+      
+        </div>
+
+</div>
+
